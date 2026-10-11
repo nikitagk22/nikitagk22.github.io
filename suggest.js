@@ -226,9 +226,24 @@
         return container;
     }
 
+    function resetScroll() {
+        if (!scroll) return;
+        if (typeof scroll.reset === 'function') {
+            scroll.reset();
+        }
+        try {
+            scroll.render().find('.scroll__body').css({
+                'transform': 'translate3d(0px, 0px, 0px)',
+                '-webkit-transform': 'translate3d(0px, 0px, 0px)'
+            });
+            scroll.render().scrollLeft(0);
+        } catch (e) {}
+    }
+
     function clearSuggestions() {
         if (scroll) {
             scroll.clear();
+            resetScroll();
         }
         var container = $('.search__body .search__suggests');
         if (container.length) {
@@ -343,7 +358,9 @@
 
         var container = getContainer();
         scroll.clear();
+        resetScroll();
         activeSuggestElements = [];
+        lastFocusedSuggest = null;
 
         var seenTitles = {};
         var filteredItems = [];
