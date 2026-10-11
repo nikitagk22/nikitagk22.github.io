@@ -24,7 +24,10 @@
     var activeXhr = null;
 
     function getNavigator() {
-        return window.Navigator || (typeof Navigator !== 'undefined' ? Navigator : null);
+        if (typeof Navigator !== 'undefined' && typeof Navigator.move === 'function') return Navigator;
+        if (window.Navigator && typeof window.Navigator.move === 'function') return window.Navigator;
+        if (window.Lampa && window.Lampa.Navigator && typeof window.Lampa.Navigator.move === 'function') return window.Lampa.Navigator;
+        return null;
     }
 
     function getSetting(key, def) {
@@ -380,6 +383,8 @@
             }).on('hover:focus', function (e) {
                 lastFocusedSuggest = e.currentTarget || elem[0];
                 if (scroll) {
+                    scroll.render().find('.selector').removeClass('focus');
+                    $(e.currentTarget).addClass('focus');
                     scroll.update($(e.currentTarget), true);
                 }
             });
@@ -569,8 +574,12 @@
                 scroll.update($(toFocus), true);
             },
             update: function () {},
+            gone: function () {
+                if (scroll) {
+                    scroll.render().find('.selector').removeClass('focus');
+                }
+            },
             up: function () {
-
                 if (!isHistoryHidden() && hasHistory()) {
                     Lampa.Controller.toggle('search_history');
                 } else {
@@ -578,7 +587,6 @@
                 }
             },
             down: function () {
-
                 if (currentSources && typeof currentSources.toggle === 'function') {
                     currentSources.toggle(true);
                 } else {
@@ -588,8 +596,9 @@
             right: function () {
                 var nav = getNavigator();
                 if (!nav || !nav.move('right')) {
-                    var cur = $(lastFocusedSuggest);
-                    var next = cur.nextAll('.selector:visible').first();
+                    var cur = lastFocusedSuggest ? $(lastFocusedSuggest) : scroll.render().find('.selector.focus').first();
+                    if (!cur.length) cur = scroll.render().find('.selector').first();
+                    var next = cur.nextAll('.selector').first();
                     if (next.length) {
                         Lampa.Controller.collectionFocus(next[0], scroll.render());
                         scroll.update(next, true);
@@ -599,8 +608,9 @@
             left: function () {
                 var nav = getNavigator();
                 if (!nav || !nav.move('left')) {
-                    var cur = $(lastFocusedSuggest);
-                    var prev = cur.prevAll('.selector:visible').first();
+                    var cur = lastFocusedSuggest ? $(lastFocusedSuggest) : scroll.render().find('.selector.focus').first();
+                    if (!cur.length) cur = scroll.render().find('.selector').last();
+                    var prev = cur.prevAll('.selector').first();
                     if (prev.length) {
                         Lampa.Controller.collectionFocus(prev[0], scroll.render());
                         scroll.update(prev, true);
@@ -608,8 +618,9 @@
                 }
             },
             enter: function () {
-                if (lastFocusedSuggest) {
-                    Lampa.Utils.trigger(lastFocusedSuggest, 'hover:enter');
+                var target = lastFocusedSuggest || (scroll ? scroll.render().find('.selector.focus')[0] : null) || (scroll ? scroll.render().find('.selector')[0] : null);
+                if (target) {
+                    Lampa.Utils.trigger(target, 'hover:enter');
                 }
             },
             back: function () {
@@ -640,6 +651,15 @@
                         return;
                     }
                     if (origUp) origUp.apply(this, arguments);
+                };
+
+                var origToggleSources = object.toggle;
+                object.toggle = function (from_search) {
+                    if (!from_search && isSuggestVisible() && Lampa.Controller.enabled().name === 'keybord') {
+                        toggleSuggests();
+                        return;
+                    }
+                    if (origToggleSources) origToggleSources.apply(this, arguments);
                 };
             }
 
